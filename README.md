@@ -10,7 +10,19 @@ This project transforms an old or repurposed iPad into a continuous, motion-sens
 
 ---
 
-## Architecture & Workflow
+## Architecture & Design Decisions
+
+### Why Cloudinary? (Media Ingestion & Staging)
+- **Bypassing Git & API File Limits**: GitHub enforces a 100 MB file size limit and imposes strict HTTP payload limits on raw API commits. Mobile 4K HDR video captures frequently exceed these constraints.
+- **Offloading Raw Payloads**: iPhone video clips upload directly to Cloudinary’s high-throughput API. The repository only receives a tiny JSON pointer file, keeping Git commit history lightweight and avoiding binary bloat in source control.
+
+### Why Render Static Sites? (Private Hosting & Privacy)
+- **Zero-Cost Private Hosting**: Free-tier GitHub accounts disable GitHub Pages on private repositories. Render provides free 24/7 static site hosting connected securely to private GitHub repositories via the GitHub App integration.
+- **Always-On Edge Delivery**: Unlike backend web services that spin down after inactivity, Render Static Sites operate continuously with SSL/HTTPS support, satisfying iPadOS WebRTC camera security requirements.
+
+---
+
+## Architecture Workflow
 
 ```
 [ iOS Device ]
@@ -56,6 +68,62 @@ This project transforms an old or repurposed iPad into a continuous, motion-sens
 
 ---
 
+## iOS Shortcut Setup & Workflow Steps
+
+The iOS Shortcut acts as the entry point for media ingestion. It accepts video files from the native iOS Share Sheet and executes the following sequence:
+
+```
+[ Share Sheet Input (Video) ]
+             │
+             ▼
+[ Action 1: Upload to Cloudinary ] ──► POST https://api.cloudinary.com/v1_1/{cloud_name}/video/upload
+             │                        (Includes upload_preset)
+             ▼
+[ Action 2: Extract Media URL ]    ──► Parse secure_url from Cloudinary JSON response
+             │
+             ▼
+[ Action 3: Construct Payload ]    ──► Format JSON: { "url": "{secure_url}", "timestamp": "{Current Date}" }
+             │
+             ▼
+[ Action 4: Encode Payload ]      ──► Base64 encode JSON payload for GitHub API compliance
+             │
+             ▼
+[ Action 5: Commit to GitHub ]     ──► PUT https://api.github.com/repos/{owner}/{repo}/contents/incoming/{ISO_Timestamp}.json
+                                      (Headers: Authorization: Bearer {GITHUB_PAT})
+```
+
+### Detailed Shortcut Configuration
+1. **Receive Input**: Enable **"Show in Share Sheet"** and restrict input types to **Media / Videos**.
+2. **Cloudinary Upload (`POST`)**:
+   - **URL**: `[https://api.cloudinary.com/v1_1/](https://api.cloudinary.com/v1_1/)<YOUR_CLOUD_NAME>/video/upload`
+   - **Method**: `POST`
+   - **Request Body (Form)**:
+     - `file`: `Shortcut Input`
+     - `upload_preset`: `<YOUR_UPLOAD_PRESET>`
+3. **Parse Cloudinary Response**:
+   - Use **Get Dictionary Value** to extract `secure_url` from the returned JSON.
+4. **Construct Pointer JSON**:
+   - Text block:
+     ```json
+     {
+       "source_url": "Dictionary Value (secure_url)",
+       "created_at": "Current Date (ISO 8601 format)"
+     }
+     ```
+5. **Base64 Encode**:
+   - Pass the text payload through **Base64 Encode** (required by GitHub API for creating binary/text content).
+6. **Commit File to GitHub (`PUT`)**:
+   - **URL**: `[https://api.github.com/repos/](https://api.github.com/repos/)<OWNER>/<REPO>/contents/incoming/upload_<Current Date format:yyyyMMdd_HHmmss>.json`
+   - **Method**: `PUT`
+   - **Headers**:
+     - `Authorization`: `Bearer <YOUR_GITHUB_PAT>`
+     - `Accept`: `application/vnd.github.v3+json`
+   - **Request Body (JSON)**:
+     - `message`: `Ingest video via iOS Shortcut`
+     - `content`: `Base64 Encoded Text`
+
+---
+
 ## Tech Stack
 
 | Domain | Technologies |
@@ -63,7 +131,7 @@ This project transforms an old or repurposed iPad into a continuous, motion-sens
 | **Ingestion & Automation** | iOS Shortcuts, Cloudinary REST API, GitHub Contents API |
 | **CI/CD & Processing** | GitHub Actions, Bash, FFmpeg (`zscale`, `tonemap=hable`), cURL, `jq` |
 | **Frontend Platform** | HTML5 Video, Vanilla JavaScript (ES6+), WebRTC MediaDevices API, HTML5 Canvas API |
-| **Hosting & Deployment** | GitHub Pages / Render Static Site Hosting |
+| **Hosting & Deployment** | Render Static Sites (Production), GitHub Pages (Optional Public Demo) |
 
 ---
 
@@ -92,7 +160,7 @@ This project transforms an old or repurposed iPad into a continuous, motion-sens
 ## Getting Started & Configuration
 
 ### Prerequisites
-1. **Cloudinary Account**: Create an account and retrieve your `Cloud Name`, `API Key`, and `Upload Preset`.
+1. **Cloudinary Account**: Retrieve your `Cloud Name`, `API Key`, and `Upload Preset`.
 2. **GitHub Personal Access Token (PAT)**: Create a token with `repo` scopes to allow the iOS Shortcut to write files to `/incoming`.
 
 ### Environment Secrets (GitHub Repository Secrets)
@@ -107,7 +175,7 @@ Configure the following secrets in your repository (**Settings > Secrets and var
 
 ## iPad Display Setup
 
-1. Open **Safari** on your iPad and navigate to your deployed live site URL.
+1. Open **Safari** on your iPad and navigate to your deployed Render URL.
 2. Tap the **Share** icon in Safari and select **Add to Home Screen**.
 3. Launch the app directly from your Home Screen to enable full-screen presentation mode (hiding browser UI/toolbars).
 4. Grant camera access when prompted to enable WebRTC motion sensing.
