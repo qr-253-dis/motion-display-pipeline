@@ -10,6 +10,16 @@ This project transforms an iPad into a continuous, motion-sensing video frame. V
 
 ---
 
+## Core Constraints & Design Goals
+
+- **100% Zero-Cost Infrastructure ($0 Operating Cost)**: A primary objective was to build a fully automated, continuous media pipeline strictly using free-tier services without incurring recurring subscription fees.
+- **Zero-Touch Automation**: Media captured on an iPhone ingests, transcodes, rotates storage, and hot-reloads on the iPad display automatically.
+- **Free-Tier Evaluation & Selection**:
+  - **Evaluated & Rejected**: Services like Vercel and Netlify were evaluated during prototyping, but their free-tier bandwidth caps, build execution limits, and strict payload caps were insufficient for handling 4K HDR media workloads.
+- **Selected Architecture**: Engineered a custom pipeline combining **Cloudinary (Free Tier)** for raw media staging, **GitHub Actions (Free Tier)** for heavy FFmpeg video processing, and **GitHub Pages (Free Tier)** for continuous static site hosting.
+ 
+---
+
 ## Architecture & Design Decisions
 
 ### Why Cloudinary? (Media Ingestion & Staging)
