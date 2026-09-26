@@ -88,7 +88,7 @@ The iOS Shortcut acts as the entry point for media ingestion. It accepts video f
 [ Action 4: Encode Payload ]       ──► Base64 encode JSON payload for GitHub API compliance
              │
              ▼
-[ Action 5: Commit to GitHub ]     ──► PUT https://api.github.com/repos/qr-253-dis/motion-display-pipeline/contents/incoming/{ISO_Timestamp}.json
+[ Action 5: Commit to GitHub ]     ──► PUT https://api.github.com/repos/{owner}/{repo}/contents/incoming/{ISO_Timestamp}.json
                                        (Headers: Authorization: Bearer {GITHUB_PAT})
 ```
 
@@ -173,7 +173,7 @@ Configure the following secrets in your repository (**Settings > Secrets and var
 
 ## iPad Display Setup
 
-1. Open **Safari** on your iPad and navigate to `[https://qr-253-dis.github.io/motion-display-pipeline/](https://qr-253-dis.github.io/motion-display-pipeline/)`.
+1. Open Safari on your iPad and navigate to your deployed GitHub Pages URL (e.g., https://<your-username>.github.io/<your-repo-name>/).
 2. Tap the **Share** icon in Safari and select **Add to Home Screen**.
 3. Launch the application directly from your Home Screen to enable full-screen presentation mode (hiding browser UI/toolbars).
 4. Grant camera access when prompted to enable WebRTC motion sensing.
