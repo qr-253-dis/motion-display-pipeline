@@ -60,8 +60,8 @@ This project transforms an iPad into a continuous, motion-sensing video frame. V
 ### 1. Mobile Ingestion (iOS Shortcut)
 - Triggered natively from the iOS Share Sheet when selecting any video.
 - Uploads raw video payload directly to **Cloudinary** via REST API.
-- Generates a Base64-encoded pointer JSON object containing metadata and the Cloudinary source URL.
-- Commits a timestamped pointer file into the repository's `/incoming` directory using the **GitHub Contents API**.
+- Generates a timestamped `.txt` pointer file containing the secure Cloudinary media URL.
+- Commits the pointer file into the repository's `/incoming/` directory using the **GitHub Contents API** to trigger the CI/CD transcoding workflow.
 
 ### 2. Automated Transcoding Pipeline (GitHub Actions)
 - Triggered automatically on push events targeting `/incoming/*.json`.
@@ -115,18 +115,12 @@ The iOS Shortcut acts as the entry point for media ingestion. It accepts video f
      - `upload_preset`: `<YOUR_UPLOAD_PRESET>`
 3. **Parse Cloudinary Response**:
    - Use **Get Dictionary Value** to extract `secure_url` from the returned JSON.
-4. **Construct Pointer JSON**:
-   - Text block:
-     ```json
-     {
-       "source_url": "Dictionary Value (secure_url)",
-       "created_at": "Current Date (ISO 8601 format)"
-     }
-     ```
+4. **Construct Pointer File**:
+   - Text block: Extract `secure_url` output from Cloudinary REST API.
 5. **Base64 Encode**:
    - Pass the text payload through **Base64 Encode** (required by GitHub API for creating binary/text content).
 6. **Commit File to GitHub (`PUT`)**:
-   - **URL**: `[https://api.github.com/repos/qr-253-dis/motion-display-pipeline/contents/incoming/upload](https://api.github.com/repos/qr-253-dis/motion-display-pipeline/contents/incoming/upload)_<Current Date format:yyyyMMdd_HHmmss>.json`
+   - **URL**: `https://api.github.com/repos/qr-253-dis/motion-display-pipeline/contents/incoming/upload_<Current Date format:yyyyMMdd_HHmmss>.txt`
    - **Method**: `PUT`
    - **Headers**:
      - `Authorization`: `Bearer <YOUR_GITHUB_PAT>`
@@ -202,3 +196,9 @@ If you notice older `video-*.txt` files remaining in the `incoming/` directory, 
 - **How to resolve**: 
   1. It is completely safe to manually delete any stranded `.txt` files in the `incoming/` folder (always keep `.gitkeep`).
   2. If a video did not complete its conversion during rapid firing, simply re-upload the video via the iOS Shortcut and allow 1–2 minutes for the workflow to complete before sending the next one.
+
+### Single-User Concurrency Model (`git push --force`)
+Because this pipeline is designed as a single-tenant personal display system, `git push --force` is utilized in the final workflow step to ensure state synchronization on the live deployment branch without blocking execution on non-fast-forward Git conflicts. In a multi-tenant production environment, this would be updated to use job queuing or concurrency lock groups (`concurrency: cancel-in-progress: false`).
+
+### Input Buffer Normalization (`incoming/uploaded.mov`)
+The pipeline standardizes temporary storage during download to `incoming/uploaded.mov`. Because iOS camera hardware natively produces QuickTime (`.mov`) containers, enforcing a known input container buffer keeps the downstream FFmpeg demuxing process deterministic prior to H.264/AAC MP4 encoding.
