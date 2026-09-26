@@ -13,17 +13,20 @@ This project transforms an iPad into a continuous, motion-sensing video frame. V
 ## Core Constraints & Design Goals
 
 - **100% Zero-Cost Infrastructure ($0 Operating Cost)**: A primary objective was to build a fully automated, continuous media pipeline strictly using free-tier services without incurring recurring subscription fees.
-- **Zero-Touch Automation**: Media captured on an iPhone ingests, transcodes, rotates storage, and hot-reloads on the iPad display automatically.
-- **Free-Tier Evaluation & Selection**:
-  - **Evaluated & Rejected**: Services like Vercel and Netlify were evaluated during prototyping, but their free-tier bandwidth caps, build execution limits, and strict payload caps were insufficient for handling 4K HDR media workloads.
-- **Selected Architecture**: Engineered a custom pipeline combining **Cloudinary (Free Tier)** for raw media staging, **GitHub Actions (Free Tier)** for heavy FFmpeg video processing, and **GitHub Pages (Free Tier)** for continuous static site hosting.
- 
+- **Zero-Touch Mobile Ingestion**: Media captured on an iPhone ingests, transcodes, rotates storage, and hot-reloads on the display automatically without desktop intervention.
+- **Platform Evaluation & Technical Trade-Offs**:
+  - **Direct GitHub API (Attempted & Rejected)**: Attempting to upload videos directly to GitHub via iOS Shortcuts required encoding files to Base64, causing severe memory spikes, XPC crashes in iOS Shortcuts, and HTTP payload failures on videos exceeding GitHub's 100 MB API limit.
+  - **Vercel & Netlify (Evaluated & Rejected)**: Serverless platforms were tested during prototyping, but their free tiers imposed strict build execution timeouts, payload limits, and bandwidth caps that failed under 4K HDR media workloads.
+  - **Selected Pipeline**: Engineered a hybrid architecture combining **Cloudinary (Free Tier)** for lightweight mobile staging, **GitHub Actions (Free Tier)** for FFmpeg processing, and **GitHub Pages** for hosting.
+
 ---
 
 ## Architecture & Design Decisions
 
-### Why Cloudinary? (Media Ingestion & Staging)
-- **Bypassing Git & API File Limits**: GitHub enforces a 100 MB file size limit and imposes strict HTTP payload limits on raw API commits. Mobile 4K HDR video captures frequently exceed these constraints.
+### Why Cloudinary for Staging? (Media Ingestion)
+- **Bypassing Mobile Memory & API Limits**: Offloading uploads to Cloudinary's REST API bypasses Base64 encoding overhead in iOS Shortcuts, preventing iOS XPC crashes and avoiding GitHub's 100 MB file limit.
+- **Decoupled Staging vs. Processing**: Early iterations attempted to use Cloudinary's `eager` transformations for video transcoding. However, asynchronous processing delays caused incomplete file downloads (`moov atom not found` errors) during CI/CD execution. The pipeline was refactored to use Cloudinary strictly as a high-speed staging buffer, offloading heavy FFmpeg transcoding entirely to GitHub Actions.
+- **Offloading Raw Payloads**: iPhone video clips upload directly to Cloudinary’s high-throughput API. The repository only receives a tiny JSON pointer file, keeping Git commit history lightweight and avoiding binary bloat in source control.
 - **Offloading Raw Payloads**: iPhone video clips upload directly to Cloudinary’s high-throughput API. The repository only receives a tiny JSON pointer file, keeping Git commit history lightweight and avoiding binary bloat in source control.
 
 ### Why GitHub Pages & Automated Pipelines? (Production Hosting)
