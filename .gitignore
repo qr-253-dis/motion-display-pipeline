@@ -1,0 +1,11 @@
+# OS & System Files
+.DS_Store
+Thumbs.db
+
+# Dynamic Ingestion Payloads
+incoming/*.json
+!incoming/.gitkeep
+
+# Environment & Local Overrides
+.env
+*.log
