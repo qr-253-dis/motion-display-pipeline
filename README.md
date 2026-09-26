@@ -190,3 +190,15 @@ Configure the following secrets in your repository (**Settings > Secrets and var
 2. Tap the **Share** icon in Safari and select **Add to Home Screen**.
 3. Launch the application directly from your Home Screen to enable full-screen presentation mode (hiding browser UI/toolbars).
 4. Grant camera access when prompted to enable WebRTC motion sensing.
+
+---
+
+## Troubleshooting & Edge Cases
+
+### Leftover `.txt` Files in `/incoming/`
+If you notice older `video-*.txt` files remaining in the `incoming/` directory, this is caused by **rapid sequential uploads**. 
+
+- **Why it happens**: Uploading multiple videos in quick succession triggers concurrent GitHub Actions runs. A race condition during the final `git pull --rebase` step can cause an action run to finish its video conversion but miss deleting the trigger `.txt` file from repository history.
+- **How to resolve**: 
+  1. It is completely safe to manually delete any stranded `.txt` files in the `incoming/` folder (always keep `.gitkeep`).
+  2. If a video did not complete its conversion during rapid firing, simply re-upload the video via the iOS Shortcut and allow 1–2 minutes for the workflow to complete before sending the next one.
